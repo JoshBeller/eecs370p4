@@ -1,0 +1,24 @@
+$$$ transferring word [0-0] from the memory to the cache
+$$$ transferring word [0-0] from the cache to the processor
+$$$ transferring word [0-0] from the cache to nowhere
+$$$ transferring word [1-1] from the memory to the cache
+$$$ transferring word [1-1] from the cache to the processor
+$$$ transferring word [1-1] from the cache to the processor
+
+@@@
+state:
+	pc 2
+	memory:
+		mem[ 0 ] 0x00810001
+		mem[ 1 ] 0x01800000
+	registers:
+		reg[ 0 ] 0
+		reg[ 1 ] 25165824
+		reg[ 2 ] 0
+		reg[ 3 ] 0
+		reg[ 4 ] 0
+		reg[ 5 ] 0
+		reg[ 6 ] 0
+		reg[ 7 ] 0
+end state
+$$$ Main memory words accessed: 2
