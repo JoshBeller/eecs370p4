@@ -11,6 +11,8 @@
 #define MAX_CACHE_SIZE 256
 #define MAX_BLOCK_SIZE 256
 
+
+
 // **Note** this is a preprocessor macro. This is not the same as a function.
 // Powers of 2 have exactly one 1 and the rest 0's, and 0 isn't a power of 2.
 #define is_power_of_2(val) (val && !(val & (val - 1)))
@@ -57,14 +59,68 @@ typedef struct cacheStruct
     int blockSize;
     int numSets;
     int blocksPerSet;
+    int hits;
+    int misses;
+    int writebacks;
     // add any variables for end-of-run stats
 } cacheStruct;
+
 
 /* Global Cache variable */
 cacheStruct cache;
 
+
 void printAction(int, int, enum actionType);
 void printCache(void);
+
+static int blockIndex(int setIndex, int way){
+    return setIndex * cache.blocksPerSet + way;
+}
+
+static void updateLRUOnHit(int setIndex, int way){
+    int idx = blockIndex(setIndex, way);
+    int oldLabel = cache.blocks[idx].lruLabel;
+
+    for (int i = 0; i < cache.blocksPerSet; i++) {
+        int cur = blockIndex(setIndex, i);
+        if (!cache.blocks[cur].valid || cur == idx) {
+            continue;
+        }
+        if (cache.blocks[cur].lruLabel > oldLabel) {
+            cache.blocks[cur].lruLabel--;
+        }
+    }
+
+    cache.blocks[idx].lruLabel = cache.blocksPerSet - 1;
+}
+
+static void updateLRUOnMiss(int setIndex, int way){
+    int idx = blockIndex(setIndex, way);
+
+    for (int i = 0; i < cache.blocksPerSet; i++) {
+        int cur = blockIndex(setIndex, i);
+        if (!cache.blocks[cur].valid || cur == idx) {
+            continue;
+        }
+        cache.blocks[cur].lruLabel--;
+    }
+
+    cache.blocks[idx].lruLabel = cache.blocksPerSet - 1;
+}
+
+static int findHit (int setIndex, int tag){
+    for(int i = 0;i<cache.blocksPerSet;i++){
+        int idx = blockIndex(setIndex, i);
+        if(cache.blocks[idx].valid && cache.blocks[idx].tag == tag){
+            return i;
+        }
+    }
+    return -1;
+}
+
+int findVictimWay(int setIndex){
+    return -1;
+}
 
 /*
  * Set up the cache with given command line parameters. This is
@@ -97,9 +153,26 @@ void cache_init(int blockSize, int numSets, int blocksPerSet)
 
     /********************* Initialize Cache *********************/
 
-    return;
-}
+    cache.blockSize = blockSize;
+    cache.numSets = numSets;
+    cache.blocksPerSet = blocksPerSet;
+    cache.hits = 0;
+    cache.misses = 0;
+    cache.writebacks = 0;
 
+    for (int i = 0; i < MAX_CACHE_SIZE; ++i) {
+        cache.blocks[i].valid = 0;
+        cache.blocks[i].dirty = 0;
+        cache.blocks[i].tag = 0;
+        cache.blocks[i].lruLabel = 0;
+        for (int j = 0; j < MAX_BLOCK_SIZE; ++j) {
+            cache.blocks[i].data[j] = 0;
+        }
+    }
+
+
+    return 0;
+}
 /*
  * Access the cache. This is the main part of the project,
  * and should call printAction as is appropriate.
@@ -128,8 +201,19 @@ int cache_access(int addr, int write_flag, int write_data)
  */
 void printStats(void)
 {
+    int dirtyBlocksLeft = 0;
+
+    for (int i = 0; i < cache.numSets * cache.blocksPerSet; ++i) {
+        if (cache.blocks[i].valid && cache.blocks[i].dirty) {
+            dirtyBlocksLeft++;
+        }
+    }
+
     printf("End of run statistics:\n");
-    return;
+    printf("hits %d, misses %d, writebacks %d\n",
+           cache.hits, cache.misses, cache.writebacks);
+    printf("%d dirty cache blocks left\n", dirtyBlocksLeft);
+
 }
 
 /*
